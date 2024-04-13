@@ -4,9 +4,10 @@ import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useKindeBrowserClient } from '@kinde-oss/kinde-auth-nextjs';
-import { getFirestore } from 'firebase/firestore';
+import { doc, getFirestore, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { app } from '@/config/FirebaseConfig';
+import { toast } from 'sonner';
 
 const CreateBusiness = () => {
   const db = getFirestore(app);
@@ -18,11 +19,12 @@ const CreateBusiness = () => {
   const onCreateBusiness = async (e) => {
     e.preventDefault();
     await setDoc(doc(db, 'Business', user.email), {
-      businessName: { businessName },
+      businessName: businessName.replace(' ', '_'),
       email: user.email,
       userName: user.given_name + ' ' + user.family_name,
     }).then(() => {
       router.replace('/dashboard');
+      toast('Business created successfully!');
     });
   };
 
@@ -34,7 +36,10 @@ const CreateBusiness = () => {
           width={200}
           height={200}
           alt='logo'
+          onClick={() => router.push('/')}
+          className='cursor-pointer'
         />
+
         <div className='flex flex-col items-center max-w-xl gap-8'>
           <h2 className='text-xl md:text-3xl font-bold text-center'>
             What should we call your business?

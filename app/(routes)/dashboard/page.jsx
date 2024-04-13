@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import { app } from '@/config/FirebaseConfig';
 import { useRouter } from 'next/navigation';
+import MeetingType from './(routes)/meeting-type/page';
 
 const Dashboard = () => {
   // reach out to our firebaseDb
@@ -27,11 +28,9 @@ const Dashboard = () => {
 
     if (docSnap.exists()) {
       setLoading(false);
-      console.log('Document data:', docSnap.data());
     } else {
       setLoading(false);
       // docSnap.data() will be undefined in this case
-      console.log('No such document!');
       router.replace('/create-business');
     }
   };
@@ -41,12 +40,9 @@ const Dashboard = () => {
   }
 
   return (
-    <>
-      <div>Dashboard</div>
-      <LogoutLink>
-        <Button>Logout</Button>
-      </LogoutLink>
-    </>
+    <div className='min-w-screen'>
+      <MeetingType />
+    </div>
   );
 };
 
