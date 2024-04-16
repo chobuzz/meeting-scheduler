@@ -28,15 +28,15 @@ const DashboardHedader = () => {
               alt='userImage'
               width={40}
               height={40}
-              className='rounded-full float-right'
+              className='rounded-full float-right cursor-pointer'
             />
+
             <ChevronDown />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Profile</DropdownMenuItem>
 
           <DropdownMenuItem>
             <Link href='/dashboard/settings'>Settings</Link>

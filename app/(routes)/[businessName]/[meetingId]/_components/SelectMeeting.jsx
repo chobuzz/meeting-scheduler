@@ -6,12 +6,28 @@ import MeetingDate from './MeetingDate';
 import MeetingTime from './MeetingTime';
 import Steptwo from './Steptwo';
 import { Button } from '@/components/ui/button';
-import { doc, getFirestore, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDocs,
+  getFirestore,
+  query,
+  setDoc,
+  where,
+} from 'firebase/firestore';
 import { app } from '@/config/FirebaseConfig';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import Plunk from '@plunk/node';
+import { render } from '@react-email/render';
+import { useRouter } from 'next/navigation';
+import { Email } from '@/emails';
 
 const SelectMeeting = ({ meetingInfo, businessInfo }) => {
   const db = getFirestore(app);
+  const plunk = new Plunk(process.env.NEXT_PUBLIC_PLUNK_API_KEY);
+
+  const router = useRouter();
 
   useEffect(() => {
     meetingInfo && createTimeSlot(meetingInfo.duration);
@@ -25,6 +41,7 @@ const SelectMeeting = ({ meetingInfo, businessInfo }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [prevBookedTime, setPrevBookedTime] = useState([]);
 
   const createTimeSlot = (interval) => {
     const startTime = 8 * 60; // 8 AM in minutes
@@ -44,6 +61,18 @@ const SelectMeeting = ({ meetingInfo, businessInfo }) => {
     setTimeSlots(slots);
   };
 
+  const clickedDate = (date) => {
+    setDate(date);
+    const day = format(date, 'EEEE');
+    if (businessInfo?.daysAvailable?.[day]) {
+      PrevBookedTime(date);
+      setEnabledDay(true);
+    } else {
+      setEnabledDay(false);
+    }
+    console.log('enabledDay', enabledDay);
+  };
+
   const handleBookMeeting = async () => {
     const regex =
       /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
@@ -51,9 +80,14 @@ const SelectMeeting = ({ meetingInfo, businessInfo }) => {
     if (email.match(regex)) {
       const id = Date.now().toString();
       const docData = {
-        businessInfo: businessInfo,
-        meetingInfo: meetingInfo,
-        date: date,
+        businessName: businessInfo.businessName,
+        hostEmail: businessInfo.email,
+        userName: businessInfo.userName,
+        meetingId: meetingInfo.id,
+        date: format(date, 'PPP'),
+        duration: meetingInfo.duration,
+        meetingUrl: meetingInfo.meetingUrl,
+        formattedDate: format(date, 't'),
         meetingTime: meetingTime,
         name: name,
         email: email,
@@ -62,9 +96,48 @@ const SelectMeeting = ({ meetingInfo, businessInfo }) => {
       };
       await setDoc(doc(db, 'BookedMeeting', id), docData);
       toast('Meeting booked successfully!');
+      sendEmail();
+      router.replace('/dashboard');
     } else {
       toast('Please enter a valid email address!');
     }
+  };
+
+  const PrevBookedTime = async (date) => {
+    const q = query(
+      collection(db, 'BookedMeeting'),
+      where('meetingId', '==', meetingInfo.id),
+      where('date', '==', format(date, 'PPP'))
+    );
+
+    const querySnapshot = await getDocs(q);
+    setPrevBookedTime([]);
+    querySnapshot.forEach((doc) => {
+      // doc.data() is never undefined for query doc snapshots
+
+      setPrevBookedTime((prev) => [...prev, doc.data().meetingTime]);
+    });
+  };
+
+  const sendEmail = () => {
+    const date_ = format(date, 'PPP');
+    const emailHtml = render(
+      <Email
+        name={name}
+        notes={notes}
+        date={date_}
+        url={meetingInfo.meetingUrl}
+        location={meetingInfo.location}
+        duration={meetingInfo.duration}
+        meetingName={meetingInfo.meetingName}
+      />
+    );
+
+    plunk.emails.send({
+      to: email,
+      subject: 'This is Buzz-scheduler Email',
+      body: emailHtml,
+    });
   };
 
   return (
@@ -90,11 +163,8 @@ const SelectMeeting = ({ meetingInfo, businessInfo }) => {
         {step == 1 ? (
           <>
             <MeetingDate
-              setDate={setDate}
               date={date}
-              businessInfo={businessInfo}
-              enabledDay={enabledDay}
-              setEnabledDay={setEnabledDay}
+              clickedDate={clickedDate}
             />
             <MeetingTime
               timeSlots={timeSlots}
@@ -102,6 +172,7 @@ const SelectMeeting = ({ meetingInfo, businessInfo }) => {
               setMeetingTime={setMeetingTime}
               enabledDay={enabledDay}
               setStep={setStep}
+              prevBookedTime={prevBookedTime}
             />
           </>
         ) : (
